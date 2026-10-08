@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jom Bina Ayat S.K.O.P</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { font-family: 'Inter', 'Comic Sans MS', sans-serif; background-color: #fdf2f8; }
+        .bounce-slight:hover { transform: translateY(-2px); }
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .animate-confetti { animation: fall 3s ease-in-out infinite; }
+        @keyframes fall {
+            0% { transform: translateY(-100vh) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-pink-200 via-blue-100 to-green-200 text-gray-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Audio synthesis for simple interactive feedback
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const playSound = (type) => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'pop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            }
+        };
+
+        const questionsData = [
+            {
+                id: 1, title: "📚 Gambar 1", instruction: "Rujuk gambar di bawah.",
+                image: "./gambar1.jpg", 
+                s: { q: "SIAPA?", options: ["Seekor kucing", "Budak perempuan"], ans: "Budak perempuan" },
+                k: { q: "BUAT APA?", options: ["membaca", "melukis"], ans: "membaca" },
+                o: { q: "APA?", options: ["buku", "bola"], ans: "buku" },
+                p: { q: "DI MANA?", options: ["di perpustakaan.", "di kantin."], ans: "di perpustakaan." },
+                words: ["membaca", "Budak perempuan", "di perpustakaan.", "buku"],
+                correctSentence: "Budak perempuan membaca buku di perpustakaan."
+            },
+            {
+                id: 2, title: "🌱 Gambar 2", instruction: "Rujuk gambar di bawah.",
+                image: "./gambar2.jpg", 
+                s: { q: "SIAPA?", options: ["Datuk", "Budak lelaki"], ans: "Budak lelaki" },
+                k: { q: "BUAT APA?", options: ["memetik", "menyiram"], ans: "menyiram" },
+                o: { q: "APA?", options: ["sayur", "pokok bunga"], ans: "pokok bunga" },
+                p: { q: "DI MANA?", options: ["di sekolah.", "di taman."], ans: "di taman." },
+                words: ["menyiram", "di taman.", "Budak lelaki", "pokok bunga"],
+                correctSentence: "Budak lelaki menyiram pokok bunga di taman."
+            },
+            {
+                id: 3, title: "🍱 Gambar 3", instruction: "Rujuk gambar di bawah.",
+                image: "./gambar3.jpg", 
+                s: { q: "SIAPA?", options: ["Budak perempuan", "Kucing"], ans: "Budak perempuan" },
+                k: { q: "BUAT APA?", options: ["makan", "minum"], ans: "makan" },
+                o: { q: "APA?", options: ["air susu", "nasi dan lauk"], ans: "nasi dan lauk" },
+                p: { q: "DI MANA?", options: ["di kantin.", "di padang."], ans: "di kantin." },
+                words: ["di kantin.", "makan", "nasi dan lauk", "Budak perempuan"],
+                correctSentence: "Budak perempuan makan nasi dan lauk di kantin."
+            },
+            {
+                id: 4, title: "🎨 Gambar 4", instruction: "Rujuk gambar di bawah.",
+                image: "./gambar4.jpg", 
+                s: { q: "SIAPA?", options: ["Cikgu", "Budak lelaki"], ans: "Budak lelaki" },
+                k: { q: "BUAT APA?", options: ["menggunting", "mewarna"], ans: "mewarna" },
+                o: { q: "APA?", options: ["kertas", "lukisan"], ans: "lukisan" },
+                p: { q: "DI MANA?", options: ["di dalam kelas.", "di taman permainan."], ans: "di dalam kelas." },
+                words: ["mewarna", "Budak lelaki", "di dalam kelas.", "lukisan"],
+                correctSentence: "Budak lelaki mewarna lukisan di dalam kelas."
+            },
+            {
+                id: 5, title: "🚲 Gambar 5", instruction: "Rujuk gambar di bawah.",
+                image: "./gambar5.jpg", 
+                s: { q: "SIAPA?", options: ["Budak lelaki", "Abang"], ans: "Budak lelaki" },
+                k: { q: "BUAT APA?", options: ["menunggang", "memandu"], ans: "menunggang" },
+                o: { q: "APA?", options: ["kereta", "basikal"], ans: "basikal" },
+                p: { q: "DI MANA?", options: ["di atas jalan raya.", "di taman permainan."], ans: "di taman permainan." },
+                words: ["basikal", "di taman permainan.", "menunggang", "Budak lelaki"],
+                correctSentence: "Budak lelaki menunggang basikal di taman permainan."
+            },
+            {
+                id: 6, title: "⚽ SOALAN CABARAN", instruction: "Bina ayat tentang gambar di bawah. (Cabaran 5 Markah!)",
+                image: "https://placehold.co/500x300/fbcfe8/be185d?text=Murid+Bermain+Bola", 
+                s: { q: "SIAPA?", options: ["Murid-murid", "Haiwan"], ans: "Murid-murid" },
+                k: { q: "BUAT APA?", options: ["bermain", "tidur"], ans: "bermain" },
+                o: { q: "APA?", options: ["catur", "bola sepak"], ans: "bola sepak" },
+                p: { q: "DI MANA?", options: ["di perpustakaan.", "di padang sekolah."], ans: "di padang sekolah." },
+                words: ["bola sepak", "di padang sekolah.", "Murid-murid", "bermain"],
+                correctSentence: "Murid-murid bermain bola sepak di padang sekolah."
+            }
+        ];
+
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [step, setStep] = useState(0); // 0: Login, 1: Info, 2-7: Qs, 8: Results, 9: Teacher
+            const [student, setStudent] = useState({ name: '', className: '' });
+            const [scores, setScores] = useState({ skop: 0, susun: 0, bina: 0 });
+            
+            const handleStart = (name, className) => {
+                setStudent({ name, className });
+                playSound('pop');
+                setStep(1);
+            };
+
+            const saveRecord = () => {
+                const total = scores.skop + scores.susun + scores.bina;
+                const record = {
+                    name: student.name,
+                    className: student.className,
+                    marks: total,
+                    date: new Date().toLocaleString()
+                };
+                const existing = JSON.parse(localStorage.getItem('skop_records') || '[]');
+                existing.push(record);
+                localStorage.setItem('skop_records', JSON.stringify(existing));
+            };
+
+            return (
+                <div className="max-w-3xl mx-auto p-4 sm:p-6 min-h-screen flex flex-col justify-center">
+                    {step === 0 && <WelcomeScreen onStart={handleStart} onTeacherView={() => setStep(9)} />}
+                    {step === 1 && <InfoScreen onNext={() => { playSound('pop'); setStep(2); }} />}
+                    {step >= 2 && step <= 7 && (
+                        <QuestionScreen 
+                            question={questionsData[step - 2]} 
+                            isBonus={step === 7}
+                            onComplete={(skopOk, susunOk) => {
+                                let newScores = { ...scores };
+                                if (step < 7) {
+                                    if (skopOk) newScores.skop += 1;
+                                    if (susunOk) newScores.susun += 1;
+                                } else {
+                                    if (skopOk && susunOk) newScores.bina += 5; // Bonus gives 5 points
+                                }
+                                setScores(newScores);
+                                playSound('correct');
+                                setTimeout(() => {
+                                    if (step === 7) {
+                                        saveRecord();
+                                        setStep(8);
+                                    } else {
+                                        setStep(step + 1);
+                                    }
+                                }, 1500);
+                            }} 
+                        />
+                    )}
+                    {step === 8 && <ResultScreen student={student} scores={scores} onHome={() => { setStep(0); setScores({skop:0, susun:0, bina:0}); }} />}
+                    {step === 9 && <TeacherDashboard onBack={() => setStep(0)} />}
+                </div>
+            );
+        }
+
+        function WelcomeScreen({ onStart, onTeacherView }) {
+            const [name, setName] = useState('');
+            const [className, setClassName] = useState('');
+            const [error, setError] = useState(false);
+
+            const handleSubmit = () => {
+                if (!name.trim() || !className.trim()) {
+                    setError(true);
+                    playSound('wrong');
+                    return;
+                }
+                onStart(name, className);
+            };
+
+            return (
+                <div className="bg-white p-8 rounded-3xl shadow-xl border-4 border-yellow-300 text-center animate-[bounce_1s_ease-in-out]">
+                    <h1 className="text-4xl md:text-5xl font-bold text-blue-600 mb-4 tracking-wide">
+                        🌟 JOM BINA AYAT 🌟<br/>
+                        <span className="text-2xl md:text-3xl text-pink-500">DENGAN TEKNIK S.K.O.P</span>
+                    </h1>
+                    <div className="bg-blue-50 p-4 rounded-xl mb-6">
+                        <p className="text-lg text-gray-700 font-medium">Sains, Teknologi dan Inovasi</p>
+                        <p className="text-md text-gray-600">Unit 18: Hebatnya Inovasi (Tahun 1)</p>
+                    </div>
+
+                    <div className="space-y-4 max-w-md mx-auto text-left">
+                        <div>
+                            <label className="block text-gray-700 font-bold mb-2">🎈 Nama Murid:</label>
+                            <input type="text" value={name} onChange={e => {setName(e.target.value); setError(false);}} 
+                                className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:border-blue-500 ${error && !name?'border-red-500 shake': 'border-gray-200'}`} 
+                                placeholder="Masukkan nama sebenar" />
+                        </div>
+                        <div>
+                            <label className="block text-gray-700 font-bold mb-2">📚 Kelas:</label>
+                            <input type="text" value={className} onChange={e => {setClassName(e.target.value); setError(false);}} 
+                                className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:border-blue-500 ${error && !className?'border-red-500 shake': 'border-gray-200'}`} 
+                                placeholder="Cth: 1 Zamrud" />
+                        </div>
+                        {error && <p className="text-red-500 text-sm text-center">Sila masukkan nama dan kelas sebelum mula!</p>}
+                        
+                        <button onClick={handleSubmit} className="w-full mt-4 bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold text-xl py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all">
+                            MULA SEKARANG! 🚀
+                        </button>
+                        
+                        <button onClick={onTeacherView} className="w-full mt-2 text-sm text-gray-400 hover:text-gray-600 underline">
+                            Paparan Guru (Rekod Jawapan)
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function InfoScreen({ onNext }) {
+            return (
+                <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border-4 border-pink-300">
+                    <h2 className="text-3xl font-bold text-center text-purple-600 mb-6">Mari Kenali S.K.O.P! 🤖</h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <div className="bg-pink-100 border-2 border-pink-400 p-4 rounded-2xl">
+                            <h3 className="text-xl font-bold text-pink-700">🩷 S = SIAPA?</h3>
+                            <p className="text-gray-700">Siapakah yang melakukan sesuatu?</p>
+                        </div>
+                        <div className="bg-blue-100 border-2 border-blue-400 p-4 rounded-2xl">
+                            <h3 className="text-xl font-bold text-blue-700">💙 K = BUAT APA?</h3>
+                            <p className="text-gray-700">Apakah perbuatan yang dilakukan?</p>
+                        </div>
+                        <div className="bg-orange-100 border-2 border-orange-400 p-4 rounded-2xl">
+                            <h3 className="text-xl font-bold text-orange-700">🧡 O = APA?</h3>
+                            <p className="text-gray-700">Apakah benda yang terlibat?</p>
+                        </div>
+                        <div className="bg-green-100 border-2 border-green-400 p-4 rounded-2xl">
+                            <h3 className="text-xl font-bold text-green-700">💚 P = DI MANA?</h3>
+                            <p className="text-gray-700">Di manakah perbuatan berlaku?</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-yellow-50 border-2 border-yellow-300 p-6 rounded-2xl mb-8">
+                        <h4 className="font-bold text-lg mb-2 text-yellow-700">Contoh Ayat:</h4>
+                        <p className="text-xl text-gray-800 font-medium mb-4">"Amir bermain bola di padang."</p>
+                        <ul className="space-y-1 text-gray-700">
+                            <li><span className="font-bold text-pink-600">S:</span> Amir</li>
+                            <li><span className="font-bold text-blue-600">K:</span> bermain</li>
+                            <li><span className="font-bold text-orange-600">O:</span> bola</li>
+                            <li><span className="font-bold text-green-600">P:</span> di padang</li>
+                        </ul>
+                    </div>
+
+                    <button onClick={onNext} className="w-full bg-purple-500 text-white font-bold text-xl py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all">
+                        SAYA FAHAM! JOM MULA 👍
+                    </button>
+                </div>
+            );
+        }
+
+        function QuestionScreen({ question, isBonus, onComplete }) {
+            const [skopAnswers, setSkopAnswers] = useState({ s: null, k: null, o: null, p: null });
+            const [phase, setPhase] = useState('skop'); // 'skop' -> 'susun' -> 'done'
+            const [arrangedWords, setArrangedWords] = useState([]);
+            const [availableWords, setAvailableWords] = useState([]);
+            const [showError, setShowError] = useState(false);
+            const [showSuccess, setShowSuccess] = useState(false);
+
+            useEffect(() => {
+                // Reset state when question changes
+                setSkopAnswers({ s: null, k: null, o: null, p: null });
+                setPhase('skop');
+                // Shuffle words
+                setAvailableWords([...question.words].sort(() => Math.random() - 0.5));
+                setArrangedWords([]);
+                setShowError(false);
+                setShowSuccess(false);
+            }, [question]);
+
+            useEffect(() => {
+                if (skopAnswers.s && skopAnswers.k && skopAnswers.o && skopAnswers.p && phase === 'skop') {
+                    setTimeout(() => {
+                        playSound('pop');
+                        setPhase('susun');
+                    }, 800);
+                }
+            }, [skopAnswers, phase]);
+
+            const handleSkopSelect = (type, option) => {
+                if (skopAnswers[type]) return; // already answered
+                
+                if (option === question[type].ans) {
+                    playSound('pop');
+                    setSkopAnswers(prev => ({ ...prev, [type]: option }));
+                } else {
+                    playSound('wrong');
+                    setShowError(true);
+                    setTimeout(() => setShowError(false), 1000);
+                }
+            };
+
+            const handleWordClick = (word, isAvailable) => {
+                playSound('pop');
+                if (isAvailable) {
+                    setAvailableWords(prev => prev.filter(w => w !== word));
+                    setArrangedWords(prev => [...prev, word]);
+                } else {
+                    setArrangedWords(prev => prev.filter((w, idx) => idx !== arrangedWords.indexOf(word)));
+                    setAvailableWords(prev => [...prev, word]);
+                }
+            };
+
+            const checkSentence = () => {
+                const currentSentence = arrangedWords.join(" ");
+                if (currentSentence === question.correctSentence) {
+                    setShowSuccess(true);
+                    onComplete(true, true);
+                } else {
+                    playSound('wrong');
+                    setShowError(true);
+                    setTimeout(() => setShowError(false), 2000);
+                }
+            };
+
+            const colors = {
+                s: 'bg-pink-100 border-pink-400 text-pink-700 hover:bg-pink-200',
+                k: 'bg-blue-100 border-blue-400 text-blue-700 hover:bg-blue-200',
+                o: 'bg-orange-100 border-orange-400 text-orange-700 hover:bg-orange-200',
+                p: 'bg-green-100 border-green-400 text-green-700 hover:bg-green-200'
+            };
+
+            return (
+                <div className="bg-white p-6 rounded-3xl shadow-xl border-4 border-blue-300 relative">
+                    {showSuccess && (
+                        <div className="absolute inset-0 bg-white/90 z-10 rounded-3xl flex flex-col items-center justify-center animate-pulse">
+                            <span className="text-6xl mb-4">🎉⭐</span>
+                            <h2 className="text-3xl font-bold text-green-600">SYABAS!</h2>
+                            <p className="text-xl text-gray-700">Jawapan kamu betul!</p>
+                            {isBonus ? <p className="text-yellow-600 font-bold mt-2">+5 BINTANG</p> : <p className="text-yellow-600 font-bold mt-2">+2 BINTANG</p>}
+                        </div>
+                    )}
+
+                    <div className="text-center mb-6">
+                        <div className="inline-block bg-gray-100 px-6 py-4 rounded-2xl border-2 border-gray-300 shadow-sm mb-4 w-full">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">{question.title}</h2>
+                            <p className="text-gray-600 italic mb-2">{question.instruction}</p>
+                            
+                            {/* Paparan Gambar Jika Ada */}
+                            {question.image && (
+                                <div className="mt-4 flex justify-center">
+                                    <img 
+                                        src={question.image} 
+                                        alt={question.title} 
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "https://placehold.co/500x300/fee2e2/ef4444?text=Sila+Muat+Naik+Gambar+Ke+Senarai+Fail";
+                                        }}
+                                        className="rounded-xl shadow-md max-h-56 object-contain border-4 border-white bg-white"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        {isBonus && <div className="text-red-500 font-bold text-xl animate-pulse">🔥 CABARAN TAMBAHAN 🔥</div>}
+                    </div>
+
+                    {/* Tahap 1: S.K.O.P */}
+                    <div className={`transition-opacity duration-500 ${phase === 'skop' ? 'opacity-100' : 'opacity-50 pointer-events-none hidden'}`}>
+                        <h3 className="text-xl font-bold text-center mb-4 text-purple-600">Pilih jawapan yang betul:</h3>
+                        <div className="grid gap-4">
+                            {['s', 'k', 'o', 'p'].map(type => (
+                                <div key={type} className={`border-2 rounded-xl p-3 flex flex-col sm:flex-row items-center gap-4 ${skopAnswers[type] ? 'border-gray-200 bg-gray-50' : 'border-dashed border-gray-400'}`}>
+                                    <div className="w-full sm:w-1/3 font-bold text-lg text-center sm:text-left">
+                                        {question[type].q}
+                                    </div>
+                                    <div className="w-full sm:w-2/3 flex flex-wrap gap-2">
+                                        {skopAnswers[type] ? (
+                                            <div className={`px-4 py-2 rounded-lg border-2 font-semibold w-full text-center ${colors[type].replace('hover:', '')}`}>
+                                                ✅ {skopAnswers[type]}
+                                            </div>
+                                        ) : (
+                                            question[type].options.map((opt, idx) => (
+                                                <button 
+                                                    key={idx}
+                                                    onClick={() => handleSkopSelect(type, opt)}
+                                                    className={`flex-1 min-w-[120px] px-4 py-2 rounded-lg border-2 font-medium transition-transform active:scale-95 ${colors[type]}`}
+                                                >
+                                                    {opt}
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Tahap 2: Susun Ayat */}
+                    {phase === 'susun' && (
+                        <div className="mt-8 animate-[fadeIn_0.5s_ease-in]">
+                            <h3 className="text-2xl font-bold text-center mb-6 text-purple-600">✏️ Jom susun ayat!</h3>
+                            
+                            <div className="min-h-[80px] bg-blue-50 border-4 border-dashed border-blue-300 rounded-2xl p-4 flex flex-wrap items-center justify-center gap-2 mb-6">
+                                {arrangedWords.length === 0 && <span className="text-gray-400 italic">Tekan perkataan di bawah untuk menyusun...</span>}
+                                {arrangedWords.map((word, idx) => (
+                                    <button 
+                                        key={idx} 
+                                        onClick={() => handleWordClick(word, false)}
+                                        className="bg-white border-2 border-blue-400 text-blue-800 px-4 py-2 rounded-xl font-bold shadow-sm hover:bg-red-50 hover:border-red-300 transition-all bounce-slight"
+                                    >
+                                        {word}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex flex-wrap justify-center gap-3 mb-8">
+                                {availableWords.map((word, idx) => (
+                                    <button 
+                                        key={idx} 
+                                        onClick={() => handleWordClick(word, true)}
+                                        className="bg-yellow-100 border-2 border-yellow-400 text-yellow-800 px-4 py-2 rounded-xl font-bold shadow-sm hover:bg-yellow-200 transition-all bounce-slight"
+                                    >
+                                        {word}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {showError && (
+                                <div className="text-red-500 text-center font-bold mb-4 shake">
+                                    💡 Cuba lagi! Susunan belum tepat.
+                                </div>
+                            )}
+
+                            {availableWords.length === 0 && arrangedWords.length > 0 && (
+                                <button 
+                                    onClick={checkSentence}
+                                    className="w-full bg-green-500 text-white font-bold text-2xl py-4 rounded-full shadow-lg hover:shadow-xl hover:bg-green-600 active:scale-95 transition-all"
+                                >
+                                    SEMAK JAWAPAN 👀
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function ResultScreen({ student, scores, onHome }) {
+            const totalMarks = scores.skop + scores.susun + scores.bina;
+            const maxMarks = 15;
+            
+            let message = "";
+            let category = "";
+            let stars = "";
+
+            if (totalMarks >= 13) {
+                category = "🏆 CEMERLANG!";
+                message = "Kamu sangat hebat membina ayat!";
+                stars = "⭐⭐⭐⭐⭐";
+            } else if (totalMarks >= 10) {
+                category = "🌟 BAGUS!";
+                message = "Teruskan berlatih!";
+                stars = "⭐⭐⭐⭐";
+            } else if (totalMarks >= 7) {
+                category = "😊 BAIK!";
+                message = "Kamu boleh buat dengan lebih baik!";
+                stars = "⭐⭐⭐";
+            } else {
+                category = "💪 JOM CUBA LAGI!";
+                message = "Jangan putus asa!";
+                stars = "⭐⭐";
+            }
+
+            return (
+                <div className="bg-white p-8 rounded-3xl shadow-xl border-4 border-yellow-400 text-center relative overflow-hidden">
+                    {totalMarks >= 10 && <div className="absolute inset-0 pointer-events-none animate-confetti">🎉🎈🎊✨🎉🎈🎊✨</div>}
+                    
+                    <h1 className="text-4xl font-bold text-purple-600 mb-6">🌟 KEPUTUSAN KAMU 🌟</h1>
+                    
+                    <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-6 mb-6">
+                        <p className="text-xl text-gray-600 mb-2">Nama Murid:</p>
+                        <p className="text-3xl font-bold text-blue-600 mb-4">{student.name}</p>
+                        <p className="text-lg text-gray-500">Kelas: {student.className}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-pink-100 to-blue-100 rounded-2xl p-6 mb-6">
+                        <p className="text-6xl font-black text-gray-800 mb-2">{totalMarks} <span className="text-3xl text-gray-500">/ 15</span></p>
+                        <p className="text-2xl font-bold text-yellow-500 tracking-widest">{stars}</p>
+                    </div>
+
+                    <div className="mb-8">
+                        <h2 className="text-3xl font-bold text-green-600 mb-2">{category}</h2>
+                        <p className="text-xl text-gray-700">{message}</p>
+                    </div>
+
+                    <button onClick={onHome} className="w-full bg-blue-500 text-white font-bold text-xl py-4 rounded-full shadow-lg hover:shadow-xl hover:bg-blue-600 active:scale-95 transition-all">
+                        KEMBALI KE LAMAN UTAMA 🏠
+                    </button>
+
+                    <div className="mt-8 pt-6 border-t-2 border-gray-100 text-left text-sm text-gray-500 bg-gray-50 p-4 rounded-xl">
+                        <p className="font-bold mb-2">📌 Nota untuk Guru (Google Forms):</p>
+                        <p>Aktiviti ini boleh diadaptasi ke Google Forms dengan struktur:</p>
+                        <ul className="list-disc pl-5 mt-1 space-y-1">
+                            <li><strong>Bahagian A:</strong> Maklumat (Nama, Kelas)</li>
+                            <li><strong>Bahagian B:</strong> Pilihan Berganda (Soalan S,K,O,P untuk 5 Gambar)</li>
+                            <li><strong>Bahagian C:</strong> Soalan Susun Ayat (Teks Pendek - memerlukan padanan rentetan yang tepat)</li>
+                            <li><strong>Bahagian D:</strong> Muat naik fail / Teks Panjang untuk cabaran membina ayat.</li>
+                        </ul>
+                    </div>
+                </div>
+            );
+        }
+
+        function TeacherDashboard({ onBack }) {
+            const records = JSON.parse(localStorage.getItem('skop_records') || '[]');
+
+            return (
+                <div className="bg-white p-6 rounded-3xl shadow-xl border-4 border-gray-300">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800">📋 Rekod Jawapan Murid</h2>
+                        <button onClick={onBack} className="bg-gray-200 px-4 py-2 rounded-lg font-bold hover:bg-gray-300">Tutup</button>
+                    </div>
+
+                    {records.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">Belum ada rekod jawapan.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-100">
+                                        <th className="p-3 border-b-2">Tarikh/Masa</th>
+                                        <th className="p-3 border-b-2">Nama</th>
+                                        <th className="p-3 border-b-2">Kelas</th>
+                                        <th className="p-3 border-b-2 text-center">Markah</th>
+                                        <th className="p-3 border-b-2">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {records.slice().reverse().map((rec, i) => (
+                                        <tr key={i} className="hover:bg-gray-50">
+                                            <td className="p-3 border-b text-sm text-gray-600">{rec.date}</td>
+                                            <td className="p-3 border-b font-semibold">{rec.name}</td>
+                                            <td className="p-3 border-b">{rec.className}</td>
+                                            <td className="p-3 border-b text-center font-bold text-blue-600">{rec.marks}/15</td>
+                                            <td className="p-3 border-b">
+                                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Selesai</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                    <p className="text-xs text-gray-400 mt-4 text-center">* Data ini disimpan secara tempatan (Local Storage) untuk tujuan demonstrasi.</p>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
